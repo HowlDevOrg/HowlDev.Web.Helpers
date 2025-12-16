@@ -59,9 +59,24 @@ jobs:
             snupkg="${nupkg%.nupkg}.snupkg"
             if [ -f "$snupkg" ]; then
               echo "Publishing symbols: $snupkg"
-              dotnet nuget push "$snupkg" \
+              
+              output=$(dotnet nuget push "$snupkg" \
                 --api-key "$NUGET_API_KEY" \
-                --source https://api.nuget.org/v3/index.json
+                --source https://api.nuget.org/v3/index.json \
+                --skip-duplicate \
+                2>&1) || true
+              
+              echo "$output"
+              
+              # Ignore 409 errors (symbols already uploaded or pending validation)
+              if echo "$output" | grep -q "409.*pending validation\|409.*already exists"; then
+                echo "⚠️  Symbols package already uploaded or pending validation - ignoring error"
+              elif echo "$output" | grep -qE "error:|Error:"; then
+                echo "❌ Failed to publish symbols package"
+                exit 1
+              else
+                echo "✓ Symbols package published successfully"
+              fi
             else
               echo "No symbols package found for $nupkg"
             fi
