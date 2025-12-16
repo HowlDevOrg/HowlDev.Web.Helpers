@@ -1,4 +1,4 @@
-[Parsers](https://www.nuget.org/packages/HowlDev.Web.Helpers.DbConnector): ![NuGet Version](https://img.shields.io/nuget/v/HowlDev.Web.Helpers.DbConnector)
+[DbConnector](https://www.nuget.org/packages/HowlDev.Web.Helpers.DbConnector): ![NuGet Version](https://img.shields.io/nuget/v/HowlDev.Web.Helpers.DbConnector)
 
 # HowlDev.Web.Helpers
 Contains a few helpers used often in web projects. 
