@@ -76,6 +76,9 @@ I'm going to be looking into adding additional parts for the registration method
 
 ## Changelog
 
-1.0 (12/15/25)
+1.0.1 (12/25/25)
+Forgot I accidentally published 1.0 before, so this is the first one I can publish that's actually meaningful.
+
+1.0 (12/25/25)
 
 - Created
