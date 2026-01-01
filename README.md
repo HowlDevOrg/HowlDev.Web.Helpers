@@ -76,6 +76,24 @@ I'm going to be looking into adding additional parts for the registration method
 
 ## Changelog
 
+1.1.0 (1/1/26)
+
+- (Okay, I suppose you should read this version as missing the leading 1; I am still exploring what interface I want to make)
+- BREAKING CHANGE: Removed the interface. I originally had it so you didn't have to specify types, but the number of endpoints that you end up dealing with the service is generally quite small, so I've removed that restriction. Now, you need to specify the types as seen in the test API: 
+
+```csharp
+app.Map("/ws/{id}", async (WebSocketService<int> service, HttpContext context, int id) => {
+    await service.RegisterSocket(context, id);
+});
+
+app.MapGet("/post/{id}", async (WebSocketService<int> service, int id) => {
+    await service.SendSocketMessage(id, $"This is the message: coming from id {id} at time {DateTime.Now}");
+});
+```
+
+- This also makes differently-typed socket services more clear (and possible; the interface was a good extraction for 1 service, but if you need more, you'd have to strongly type anyways).
+- IMPORTANT: Hooked into `IHostApplicationLifetime`, which allows me to force close sockets on close of the app, which was _super annoying_ for a time. Now, you close your app, and it closes all the sockets for you instead of having to go hunt down wherever you were debugging (forbid you ever deployed this library to production and couldn't shut down :P).  
+
 1.0.1 (12/25/25)
 Forgot I accidentally published 1.0 before, so this is the first one I can publish that's actually meaningful.
 

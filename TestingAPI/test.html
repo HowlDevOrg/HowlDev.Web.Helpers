@@ -3,8 +3,10 @@
         <h1>Socket</h1>
         <script>
             console.log("Starting socket reading...");
-            socket = new WebSocket("http://localhost:5106/ws/1")
-            socket.onmessage = (m) => console.log(m.data);
+            const intsocket = new WebSocket("http://localhost:5106/ws/1")
+            intsocket.onmessage = (m) => console.log("Int: ", m.data);
+            const stringsocket = new WebSocket("http://localhost:5106/ws/string/hi")
+            stringsocket.onmessage = (m) => console.log("String: ", m.data);
         </script>
     </body>
 </html>

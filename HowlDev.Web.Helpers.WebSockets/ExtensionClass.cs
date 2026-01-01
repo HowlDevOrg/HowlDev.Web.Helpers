@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HowlDev.Web.Helpers.WebSockets;
 
+/// <summary>
+/// Extensions for the Builder and my WS library.
+/// </summary>
 public static class WebSocketBuilderExtensions {
     /// <summary>
     /// Adds a WebSocketService to the DI container. The type argument determines what the key type is for the 
@@ -13,7 +16,6 @@ public static class WebSocketBuilderExtensions {
     /// </summary>
     public static WebApplicationBuilder AddWebSocketService<T>(this WebApplicationBuilder builder) where T : notnull {
         builder.Services.AddSingleton<WebSocketService<T>>();
-        builder.Services.AddSingleton<IWebSocketService>(sp => sp.GetRequiredService<WebSocketService<T>>());
 
         return builder;
     }

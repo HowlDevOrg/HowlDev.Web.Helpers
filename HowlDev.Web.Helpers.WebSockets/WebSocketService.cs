@@ -3,6 +3,7 @@ using System.Text;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 
 namespace HowlDev.Web.Helpers.WebSockets;
 
@@ -11,28 +12,45 @@ namespace HowlDev.Web.Helpers.WebSockets;
 /// supports sending messages.
 /// </summary>
 /// <typeparam name="T">Type for the keys in the inner ConcurrentDictionary</typeparam>
-public class WebSocketService<T>(ILogger<WebSocketService<T>> logger) : IWebSocketService where T : notnull{
+public class WebSocketService<T> where T : notnull {
     private readonly ConcurrentDictionary<T, ConcurrentDictionary<string, WebSocket>> sockets = new();
+    private readonly ILogger<WebSocketService<T>> _logger;
+    private readonly CancellationTokenRegistration _shutdownRegistration;
 
+    /// <summary>
+    /// Do not instantiate directly. Use the DI container.
+    /// </summary>
+    public WebSocketService(ILogger<WebSocketService<T>> logger, IHostApplicationLifetime lifetime) {
+        _logger = logger;
+
+        // Register shutdown handler
+        _shutdownRegistration = lifetime.ApplicationStopping.Register(() => {
+            _logger.LogInformation("Application is stopping, closing all WebSocket connections...");
+            CloseAllSocketsSync();
+            _logger.LogInformation("All WebSocket connections closed.");
+        });
+    }
+
+    /// <summary>
+    /// Call directly in your program/endpoint. Await it and presume that you won't return anything after it; it 
+    /// swallows the response until it closes. <br/>
+    /// This "subscribes" to the key until the connection closes or the app stops.
+    /// </summary>
     public async Task RegisterSocket(HttpContext context, T key) {
+        if (!context.WebSockets.IsWebSocketRequest) throw new Exception("Not a web socket request. Did you enable the middleware?");
         var inner = sockets.GetOrAdd(key, _ => new ConcurrentDictionary<string, WebSocket>());
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         await AddNewWebsocket(webSocket, inner);
     }
 
-    public async Task RegisterSocket(HttpContext context, object key) {
-        await RegisterSocket(context, (T)key);
-    }
-
+    /// <summary>
+    /// Send a string to the subscribers of the current key. 
+    /// </summary>
     public async Task SendSocketMessage(T key, string message) {
         if (!sockets.TryGetValue(key, out var inner)) {
             return;
         }
         await SendMessage(inner, message);
-    }
-
-    public async Task SendSocketMessage(object key, string message) {
-        await SendSocketMessage((T)key, message);
     }
 
     private async Task AddNewWebsocket(WebSocket webSocket, ConcurrentDictionary<string, WebSocket> inner) {
@@ -48,7 +66,7 @@ public class WebSocketService<T>(ILogger<WebSocketService<T>> logger) : IWebSock
                 if (result.MessageType == WebSocketMessageType.Close) break;
             } while (!(result?.CloseStatus.HasValue ?? false));
         } catch (Exception ex) {
-            logger.LogError("WebSocket error: {message}", ex.Message);
+            _logger.LogError("WebSocket error: {message}", ex.Message);
         } finally {
             // Clean up this connection from the inner map
             inner.TryRemove(connectionId, out var _);
@@ -62,7 +80,7 @@ public class WebSocketService<T>(ILogger<WebSocketService<T>> logger) : IWebSock
         }
     }
 
-    private async Task SendMessage(ConcurrentDictionary<string, WebSocket> inner, string message) {
+    private static async Task SendMessage(ConcurrentDictionary<string, WebSocket> inner, string message) {
         var buffer = Encoding.UTF8.GetBytes(message);
         var segment = new ArraySegment<byte>(buffer);
 
@@ -87,6 +105,34 @@ public class WebSocketService<T>(ILogger<WebSocketService<T>> logger) : IWebSock
                 inner.TryRemove(id, out var _);
                 try { socket.Dispose(); } catch { }
             }
+        }
+    }
+
+    private static async Task CloseSocketAsync(WebSocket socket) {
+        try {
+            if (socket.State == WebSocketState.Open || socket.State == WebSocketState.CloseReceived) {
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Service disposed", CancellationToken.None);
+            }
+        } catch { }
+
+        try { socket.Dispose(); } catch { }
+    }
+
+    private void CloseAllSocketsSync() {
+        var closeTasks = new List<Task>();
+
+        foreach (var (outerKey, inner) in sockets.ToArray()) {
+            foreach (var (id, socket) in inner.ToArray()) {
+                if (socket != null) {
+                    inner.TryRemove(id, out _);
+                    closeTasks.Add(CloseSocketAsync(socket));
+                }
+            }
+            sockets.TryRemove(outerKey, out _);
+        }
+
+        if (closeTasks.Count > 0) {
+            Task.WhenAll(closeTasks).Wait(TimeSpan.FromSeconds(5));
         }
     }
 }
