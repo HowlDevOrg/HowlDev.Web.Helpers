@@ -16,9 +16,11 @@ app.Map("/ws/string/{id}", async (WebSocketService<string> service, HttpContext 
 });
 
 app.MapGet("/post/{id}", async (WebSocketService<int> service, int id) => {
+    Console.WriteLine(string.Join(',', service.Keys));
     await service.SendSocketMessage(id, $"This is the message: coming from id {id} at time {DateTime.Now}");
 });
 app.MapGet("/post/string/{id}", async (WebSocketService<string> service, string id) => {
+    Console.WriteLine(string.Join(',', service.Keys));
     await service.SendSocketMessage(id, $"This is the message: coming from id {id} at time {DateTime.Now}");
 });
 

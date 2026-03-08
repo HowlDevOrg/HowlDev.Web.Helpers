@@ -80,6 +80,10 @@ I'm going to be looking into adding additional parts for the registration method
 
 ## Changelog
 
+1.1.2 (3/8/26)
+
+- Added debugging view for keys from the service. It just reaches into the internal dictionary and returns the keys from them. 
+
 1.1.1 (2/26/26)
 
 - Small version bump to test new workflow and organization.

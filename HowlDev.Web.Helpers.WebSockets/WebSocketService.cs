@@ -15,7 +15,11 @@ namespace HowlDev.Web.Helpers.WebSockets;
 public class WebSocketService<T> where T : notnull {
     private readonly ConcurrentDictionary<T, ConcurrentDictionary<string, WebSocket>> sockets = new();
     private readonly ILogger<WebSocketService<T>> _logger;
-    private readonly CancellationTokenRegistration _shutdownRegistration;
+
+    /// <summary>
+    /// For debugging purposes only. Returns all the internal keys.
+    /// </summary>
+    public IEnumerable<T> Keys => sockets.Keys;
 
     /// <summary>
     /// Do not instantiate directly. Use the DI container.
@@ -24,7 +28,7 @@ public class WebSocketService<T> where T : notnull {
         _logger = logger;
 
         // Register shutdown handler
-        _shutdownRegistration = lifetime.ApplicationStopping.Register(() => {
+        lifetime.ApplicationStopping.Register(() => {
             _logger.LogInformation("Application is stopping, closing all WebSocket connections...");
             CloseAllSocketsSync();
             _logger.LogInformation("All WebSocket connections closed.");
@@ -50,6 +54,7 @@ public class WebSocketService<T> where T : notnull {
         if (!sockets.TryGetValue(key, out var inner)) {
             return;
         }
+
         await SendMessage(inner, message);
     }
 
@@ -76,6 +81,7 @@ public class WebSocketService<T> where T : notnull {
                     await webSocket.CloseAsync(result?.CloseStatus ?? WebSocketCloseStatus.NormalClosure, result?.CloseStatusDescription, CancellationToken.None);
                 } catch { }
             }
+
             try { webSocket.Dispose(); } catch { }
         }
     }
@@ -96,6 +102,7 @@ public class WebSocketService<T> where T : notnull {
             if (socket.State != WebSocketState.Open) {
                 inner.TryRemove(id, out var _);
                 try { socket.Dispose(); } catch { }
+
                 continue;
             }
 
@@ -128,6 +135,7 @@ public class WebSocketService<T> where T : notnull {
                     closeTasks.Add(CloseSocketAsync(socket));
                 }
             }
+
             sockets.TryRemove(outerKey, out _);
         }
 
