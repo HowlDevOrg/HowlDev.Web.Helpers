@@ -93,26 +93,27 @@ public class WebSocketService<T> where T : notnull {
         // Snapshot the connections to avoid enumeration issues
         var snapshot = inner.ToArray();
 
-        foreach (var (id, socket) in snapshot) {
+        await Parallel.ForEachAsync(snapshot, async (pair, token) => {
+            WebSocket socket = pair.Value;
             if (socket == null) {
-                inner.TryRemove(id, out var _);
-                continue;
+                inner.TryRemove(pair);
+                return;
             }
 
             if (socket.State != WebSocketState.Open) {
-                inner.TryRemove(id, out var _);
+                inner.TryRemove(pair);
                 try { socket.Dispose(); } catch { }
 
-                continue;
+                return;
             }
 
             try {
                 await socket.SendAsync(segment, WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
             } catch {
-                inner.TryRemove(id, out var _);
+                inner.TryRemove(pair);
                 try { socket.Dispose(); } catch { }
             }
-        }
+        });
     }
 
     private static async Task CloseSocketAsync(WebSocket socket) {

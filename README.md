@@ -80,6 +80,11 @@ I'm going to be looking into adding additional parts for the registration method
 
 ## Changelog
 
+1.2.0 (3/13/26)
+
+- Transferred prior inner loop to a `Parallel.ForEachAsync` call to send messages to all sockets, which hopefully is more scalable (as in, it should be able to do the number of processors you have instead of just 1 at a time). 
+- Minor version update because I tested it, it shouldn't break, but it might. 
+
 1.1.2 (3/8/26)
 
 - Added debugging view for keys from the service. It just reaches into the internal dictionary and returns the keys from them. 
